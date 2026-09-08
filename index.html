@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BINGO MOBILE</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; touch-action: manipulation; }
+    .bingo-cell { transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+    .bingo-cell.marked { background-color: #EF4444 !important; color: white !important; border-color: #DC2626; transform: scale(0.96); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+    .free-cell { background-color: #FBBF24 !important; color: #78350F !important; border-color: #D97706 !important; }
+    .header-cell { 
+      background: #4F46E5; 
+      color: white; 
+      border-radius: 12px; 
+      font-weight: 900; 
+      font-size: 1.75rem; 
+      height: 55px;            
+      display: flex; 
+      align-items: center;     
+      justify-content: center; 
+      text-align: center; 
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-2">
+
+  <!-- หน้ากรอกชื่อผู้เล่น -->
+  <div id="login-page" class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm mt-10 text-center">
+    <h1 class="text-3xl font-black mb-6 text-indigo-700">BINGO GAME</h1>
+    <input type="text" id="player-input-name" placeholder="กรอกชื่อผู้เล่นของคุณ" class="w-full p-4 border-2 border-indigo-100 rounded-xl mb-4 text-center text-xl focus:border-indigo-500 outline-none font-bold">
+    <button onclick="login()" id="btn-login" class="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold text-xl active:bg-indigo-800 shadow-lg">เข้าสู่เกม</button>
+    <p id="error-msg" class="text-red-500 mt-4 hidden"></p>
+  </div>
+
+  <!-- หน้ากระดานเกม BINGO -->
+  <div id="game-page" class="w-full max-w-md hidden px-1 mt-4">
+    <div class="bg-white p-4 rounded-2xl shadow-md mb-4 border-b-4 border-indigo-500 flex justify-between items-center">
+      <div class="text-left">
+        <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">ผู้เล่น</p>
+        <p id="player-name" class="text-xl font-bold text-indigo-900 leading-tight"></p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="triggerReset()" class="bg-yellow-500 text-white px-3 py-2 rounded-xl text-sm font-black active:bg-yellow-600 shadow-md">ล้างตาราง</button>
+        <button onclick="logout()" class="bg-gray-600 text-white px-3 py-2 rounded-xl text-sm font-black active:bg-gray-700 shadow-md">เปลี่ยนชื่อ</button>
+      </div>
+    </div>
+    
+    <div class="bg-white p-3 rounded-2xl shadow-xl border border-gray-100">
+      <div class="grid grid-cols-5 gap-2 mb-3">
+        <div class="header-cell">B</div>
+        <div class="header-cell">I</div>
+        <div class="header-cell">N</div>
+        <div class="header-cell">G</div>
+        <div class="header-cell">O</div>
+      </div>
+      <div id="bingo-board" class="grid grid-cols-5 gap-2"></div>
+    </div>
+    
+    <p class="text-center text-gray-400 mt-4 text-sm font-medium">💡 กดที่ตัวเลขบนหน้าจอเพื่อทำเครื่องหมาย (Mark)</p>
+  </div>
+
+  <!-- Modal แสดงเมื่อ BINGO -->
+  <div id="bingo-modal" class="fixed inset-0 bg-indigo-950 bg-opacity-90 flex items-center justify-center hidden z-50 p-6">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl text-center w-full max-w-xs transform scale-110">
+      <div class="text-6xl mb-4 animate-bounce">🎉</div>
+      <h2 class="text-5xl font-black text-red-500 mb-2 tracking-wide">BINGO!</h2>
+      <p class="text-gray-600 mb-6 font-bold text-lg">คุณคือผู้ชนะในรอบนี้!</p>
+      <button onclick="closeModal()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-xl shadow-md active:bg-indigo-700">ดูหน้าจอต่อ</button>
+    </div>
+  </div>
+
+  <script>
+    let boardState = new Array(25).fill(false);
+    let hasBingoed = false;
+
+    function login() {
+      const playerName = document.getElementById('player-input-name').value.trim();
+      const errorMsg = document.getElementById('error-msg');
+      
+      if (!playerName) {
+        errorMsg.innerText = "กรุณากรอกชื่อผู้เล่นก่อนเข้าเกม";
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+      
+      errorMsg.classList.add('hidden');
+      document.getElementById('login-page').classList.add('hidden');
+      document.getElementById('game-page').classList.remove('hidden');
+      document.getElementById('player-name').innerText = playerName;
+      
+      generateNewBoard();
+    }
+
+    function generateNewBoard() {
+      const columns = [[], [], [], [], []];
+      const ranges = [
+        {min: 1, max: 15},  // B
+        {min: 16, max: 30}, // I
+        {min: 31, max: 45}, // N
+        {min: 46, max: 60}, // G
+        {min: 61, max: 75}  // O
+      ];
+
+      for (var c = 0; c < 5; c++) {
+        while (columns[c].length < 5) {
+          var rand = Math.floor(Math.random() * (ranges[c].max - ranges[c].min + 1)) + ranges[c].min;
+          if (columns[c].indexOf(rand) === -1) {
+            columns[c].push(rand);
+          }
+        }
+      }
+
+      var flatBoard = [];
+      for (var r = 0; r < 5; r++) {
+        for (var c = 0; c < 5; c++) {
+          flatBoard.push(columns[c][r]);
+        }
+      }
+
+      renderBoard(flatBoard);
+    }
+
+    function renderBoard(numbers) {
+      const boardElement = document.getElementById('bingo-board');
+      boardElement.innerHTML = '';
+      boardState = new Array(25).fill(false);
+      hasBingoed = false;
+
+      numbers.forEach((num, index) => {
+        const cell = document.createElement('button');
+        cell.id = "cell-" + index;
+        
+        if (index === 12) {
+          cell.className = "bingo-cell free-cell marked border-2 rounded-xl flex flex-col items-center justify-center font-black text-base py-4 shadow-sm focus:outline-none";
+          cell.innerHTML = "<span>FREE</span>";
+          boardState[12] = true;
+        } else {
+          cell.className = "bingo-cell bg-gray-50 border-2 border-gray-200 rounded-xl flex items-center justify-center text-2xl font-extrabold text-gray-800 py-4 shadow-sm active:bg-gray-200 focus:outline-none";
+          cell.innerText = num;
+          cell.onclick = () => toggleCell(index);
+        }
+        boardElement.appendChild(cell);
+      });
+    }
+
+    function toggleCell(index) {
+      if (index === 12) return;
+      const cell = document.getElementById("cell-" + index);
+      boardState[index] = !boardState[index];
+      
+      if (boardState[index]) {
+        cell.classList.add('marked');
+      } else {
+        cell.classList.remove('marked');
+      }
+      checkBingo();
+    }
+
+    function checkBingo() {
+      if (hasBingoed) return;
+      const winLines = [
+        [0,1,2,3,4], [5,6,7,8,9], [10,11,12,13,14], [15,16,17,18,19], [20,21,22,23,24],
+        [0,5,10,15,20], [1,6,11,16,21], [2,7,12,17,22], [3,8,13,18,23], [4,9,14,19,24],
+        [0,6,12,18,24], [4,8,12,16,20],
+        [0,4,20,24],
+        [6,8,16,18]
+      ];
+
+      for (let line of winLines) {
+        if (line.every(i => boardState[i])) {
+          showBingo();
+          break;
+        }
+      }
+    }
+
+    function showBingo() {
+      hasBingoed = true;
+      document.getElementById('bingo-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('bingo-modal').classList.add('hidden');
+    }
+
+    function triggerReset() {
+      if (confirm("คุณแน่ใจหรือไม่ว่าต้องการล้างกระดานปัจจุบันและสุ่มกระดานใหม่ทั้งหมด?")) {
+        generateNewBoard();
+      }
+    }
+
+    function logout() {
+      document.getElementById('player-input-name').value = ""; 
+      document.getElementById('game-page').classList.add('hidden'); 
+      document.getElementById('login-page').classList.remove('hidden'); 
+    }
+  </script>
+</body>
+</html>
