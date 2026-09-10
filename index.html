@@ -6,24 +6,32 @@
   <title>BINGO MOBILE</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Kanit', sans-serif; touch-action: manipulation; }
-    .bingo-cell { transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
-    .bingo-cell.marked { background-color: #EF4444 !important; color: white !important; border-color: #DC2626; transform: scale(0.96); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
-    .free-cell { background-color: #FBBF24 !important; color: #78350F !important; border-color: #D97706 !important; }
-    .header-cell { 
-      background: #4F46E5; 
-      color: white; 
-      border-radius: 12px; 
-      font-weight: 900; 
-      font-size: 1.75rem; 
-      height: 55px;            
-      display: flex; 
-      align-items: center;     
-      justify-content: center; 
-      text-align: center; 
-    }
-  </style>
+  <!-- 1. เปลี่ยนลิงก์ดึงฟอนต์จาก Google Fonts ให้เพิ่ม Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+
+<style>
+  /* 2. กำหนด Montserrat เป็นลำดับแรก แล้วตามด้วย Kanit สำหรับภาษาไทย */
+  body { 
+    font-family: 'Montserrat', 'Kanit', sans-serif; 
+    touch-action: manipulation; 
+  }
+  
+  .bingo-cell { transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .bingo-cell.marked { background-color: #EF4444 !important; color: white !important; border-color: #DC2626; transform: scale(0.96); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+  .free-cell { background-color: #FBBF24 !important; color: #78350F !important; border-color: #D97706 !important; }
+  .header-cell { 
+    background: #4F46E5; 
+    color: white; 
+    border-radius: 12px; 
+    font-weight: 900; 
+    font-size: 1.75rem; 
+    height: 55px;            
+    display: flex; 
+    align-items: center;     
+    justify-content: center; 
+    text-align: center; 
+  }
+</style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center p-2">
 
@@ -41,6 +49,10 @@
       <div class="text-left">
         <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">ผู้เล่น</p>
         <p id="player-name" class="text-xl font-bold text-indigo-900 leading-tight"></p>
+        <div class="mt-1 flex items-center gap-1">
+          <span class="text-xs font-bold text-gray-500">⏱️ เวลาในเกม:</span>
+          <span id="game-timer" class="text-sm font-black text-indigo-600 tracking-wider">00:00</span>
+        </div>
       </div>
       <div class="flex gap-2">
         <button onclick="triggerReset()" class="bg-yellow-500 text-white px-3 py-2 rounded-xl text-sm font-black active:bg-yellow-600 shadow-md">ล้างตาราง</button>
@@ -67,7 +79,8 @@
     <div class="bg-white p-8 rounded-3xl shadow-2xl text-center w-full max-w-xs transform scale-110">
       <div class="text-6xl mb-4 animate-bounce">🎉</div>
       <h2 class="text-5xl font-black text-red-500 mb-2 tracking-wide">BINGO!</h2>
-      <p class="text-gray-600 mb-6 font-bold text-lg">คุณคือผู้ชนะในรอบนี้!</p>
+      <p class="text-gray-600 mb-2 font-bold text-lg">คุณคือผู้ชนะในรอบนี้!</p>
+      <p id="bingo-time-stat" class="text-indigo-600 font-extrabold text-base mb-6"></p>
       <button onclick="closeModal()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-xl shadow-md active:bg-indigo-700">ดูหน้าจอต่อ</button>
     </div>
   </div>
@@ -75,6 +88,36 @@
   <script>
     let boardState = new Array(25).fill(false);
     let hasBingoed = false;
+    let timerInterval = null;
+    let secondsElapsed = 0;
+
+    function startTimer() {
+      stopTimer();
+      secondsElapsed = 0;
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        secondsElapsed++;
+        updateTimerDisplay();
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(secondsElapsed / 60);
+      const seconds = secondsElapsed % 60;
+      const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      const timerElement = document.getElementById('game-timer');
+      if (timerElement) {
+        timerElement.innerText = formatted;
+      }
+      return formatted;
+    }
 
     function login() {
       const playerName = document.getElementById('player-input-name').value.trim();
@@ -91,6 +134,7 @@
       document.getElementById('game-page').classList.remove('hidden');
       document.getElementById('player-name').innerText = playerName;
       
+      startTimer();
       generateNewBoard();
     }
 
@@ -179,6 +223,9 @@
 
     function showBingo() {
       hasBingoed = true;
+      stopTimer();
+      const finalTime = updateTimerDisplay();
+      document.getElementById('bingo-time-stat').innerText = `ใช้เวลาเล่นรอบนี้: ${finalTime}`;
       document.getElementById('bingo-modal').classList.remove('hidden');
     }
 
@@ -187,12 +234,14 @@
     }
 
     function triggerReset() {
-      if (confirm("คุณแน่ใจหรือไม่ว่าต้องการล้างกระดานปัจจุบันและสุ่มกระดานใหม่ทั้งหมด?")) {
+      if (confirm("คุณแน่ใจหรือไม่ว่าต้องการล้างกระดาน? เวลาจะถูกเริ่มนับใหม่ทันที")) {
+        startTimer();
         generateNewBoard();
       }
     }
 
     function logout() {
+      stopTimer();
       document.getElementById('player-input-name').value = ""; 
       document.getElementById('game-page').classList.add('hidden'); 
       document.getElementById('login-page').classList.remove('hidden'); 
