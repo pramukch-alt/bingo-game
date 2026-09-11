@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo TV Edition - Neon Game Show</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800;900&family=Montserrat:wght@800;900&display=swap');
+        
+        body {
+            font-family: 'Kanit', sans-serif;
+            background: radial-gradient(circle at 75% 50%, #1e1b4b 0%, #0f172a 45%, #020617 100%);
+            overflow: hidden;
+        }
+
+        .font-montserrat {
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        /* เอฟเฟกต์หมุนสั่นสะเทือนแบบลูกบอลไฟฟ้า */
+        .ball-spinning {
+            animation: neonSpin 0.09s infinite alternate;
+            box-shadow: 0 0 80px rgba(251, 191, 36, 0.7) !important;
+        }
+
+        @keyframes neonSpin {
+            0% { transform: scale(0.96) rotate(-4deg); filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.8)); }
+            100% { transform: scale(1.04) rotate(4deg); filter: drop-shadow(0 0 35px rgba(236, 72, 153, 0.9)); }
+        }
+
+        /* เส้นกริดนีออนไซเบอร์ */
+        .neon-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            box-shadow: 0 0 30px rgba(79, 70, 229, 0.15), inset 0 0 20px rgba(99, 102, 241, 0.05);
+        }
+
+        .neon-table-card {
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            box-shadow: 0 0 40px rgba(245, 158, 11, 0.1);
+        }
+    </style>
+</head>
+<body class="text-white h-screen w-screen flex items-center justify-center p-4 select-none">
+
+    <audio id="soundSpin" src="spinning.mp3" preload="auto" loop></audio>
+    <audio id="soundWin" src="win.mp3" preload="auto"></audio>
+
+    <div class="w-full h-full max-w-[1920px] max-h-[1080px] grid grid-cols-12 gap-6 p-6 rounded-3xl border border-indigo-500/20 shadow-[0_0_80px_rgba(0,0,0,0.8)] overflow-hidden relative">
+        
+        <!-- แสงส่องหลังจอซ้าย-ขวา -->
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- ฝั่งซ้าย: ตารางตัวเลข 1-75 สไตล์นีออนบอร์ด -->
+        <div class="col-span-7 flex flex-col h-full neon-table-card rounded-2xl p-5 shadow-2xl overflow-hidden relative">
+            <div class="flex-1 w-full h-full flex flex-col">
+                <table class="w-full h-full border-separate border-spacing-2 text-center table-fixed flex flex-col">
+                    <thead class="w-full block">
+                        <tr class="text-4xl md:text-5xl font-black tracking-widest grid grid-cols-5 w-full pb-2">
+                            <th class="py-1 text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]">B</th>
+                            <th class="py-1 text-rose-500 drop-shadow-[0_0_12px_rgba(244,63,94,0.8)]">I</th>
+                            <th class="py-1 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">N</th>
+                            <th class="py-1 text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]">G</th>
+                            <th class="py-1 text-purple-400 drop-shadow-[0_0_12px_rgba(192,132,252,0.8)]">O</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bingoTableBody" class="w-full flex-1 flex flex-col justify-between">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ฝั่งขวา: แท่นสุ่มลูกบอลทองคำ 3D โกลว์ และแผงควบคุม -->
+        <div class="col-span-5 flex flex-col justify-between h-full neon-card rounded-2xl p-8 relative shadow-2xl">
+            
+            <div class="text-center">
+                <h2 class="text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 uppercase drop-shadow-sm">
+                    BINGO STAGE CONTROL
+                </h2>
+                <div class="mt-3 text-sm text-slate-400 flex justify-center items-center gap-2">
+                    <span class="font-semibold">ขีดจำกัดตัวเลข:</span>
+                    <input type="number" id="maxNumber" value="75" min="15" max="100" 
+                           class="w-16 bg-slate-900/90 text-amber-400 border border-amber-500/40 rounded-lg text-center font-montserrat font-black py-1 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                </div>
+            </div>
+
+            <!-- แท่นโชว์ลูกบอลสุ่มแบบ 3D -->
+            <div class="flex-1 flex flex-col items-center justify-center my-4">
+                <div id="topStatusText" class="text-amber-300 font-extrabold text-2xl uppercase tracking-widest mb-6 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">
+                    หมายเลขล่าสุดคือ :
+                </div>
+                
+                <div class="w-72 h-72 md:w-80 md:h-80 bg-gradient-to-br from-amber-100 via-amber-400 to-amber-600 rounded-full shadow-[0_0_70px_rgba(245,158,11,0.45)] flex items-center justify-center border-4 border-yellow-200 relative overflow-hidden transition-all duration-300">
+                    <!-- ประกายแสงเงาสะท้อนกระจกกลม -->
+                    <div class="absolute top-3 left-10 w-36 h-14 bg-white/45 rounded-full blur-xs transform -rotate-25 pointer-events-none"></div>
+                    <div id="luckyNumber" class="font-montserrat text-slate-950 font-black text-[9.5rem] leading-none select-none tracking-tighter drop-shadow-2xl">
+                        --
+                    </div>
+                </div>
+
+                <div id="bottomStatusText" class="text-cyan-400 font-bold text-lg mt-6 tracking-wide h-6">พร้อมเริ่มสนุก!</div>
+            </div>
+
+            <!-- แผงปุ่มกด Spin / Reset สไตล์สวิตช์เกมโชว์ -->
+            <div class="grid grid-cols-3 gap-4">
+                <button id="spinBtn" onclick="spinNumber()" class="col-span-2 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-2xl py-4 rounded-xl shadow-[0_0_30px_rgba(245,158,11,0.4)] border-b-4 border-orange-800 active:border-b-0 active:translate-y-1 transition-all cursor-pointer text-center uppercase tracking-wider">
+                    SPIN (3s)
+                </button>
+                <button id="resetBtn" onclick="resetGame()" class="col-span-1 bg-gradient-to-r from-rose-700 to-red-800 hover:from-rose-600 hover:to-red-700 text-white font-bold text-lg py-4 rounded-xl shadow-lg border-b-4 border-red-950 active:border-b-0 active:translate-y-1 transition-all cursor-pointer text-center uppercase">
+                    RESET
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let maxNum = 75;
+        let drawnNumbers = [];
+        let isSpinning = false;
+
+        const maxNumberInput = document.getElementById('maxNumber');
+        const luckyNumberEl = document.getElementById('luckyNumber');
+        const topStatusText = document.getElementById('topStatusText');
+        const bottomStatusText = document.getElementById('bottomStatusText');
+        const spinBtn = document.getElementById('spinBtn');
+        const bingoTableBody = document.getElementById('bingoTableBody');
+
+        const soundSpin = document.getElementById('soundSpin');
+        const soundWin = document.getElementById('soundWin');
+
+        maxNumberInput.addEventListener('change', function() {
+            let val = parseInt(this.value);
+            if (isNaN(val) || val < 15) val = 15;
+            maxNum = val;
+            resetGame();
+        });
+
+        function generateTable() {
+            bingoTableBody.innerHTML = '';
+            const rowsCount = Math.ceil(maxNum / 5); 
+
+            for (let i = 0; i < rowsCount; i++) {
+                const tr = document.createElement('tr');
+                tr.className = "grid grid-cols-5 w-full flex-1 gap-2 my-0.5";
+
+                for (let col = 0; col < 5; col++) {
+                    const td = document.createElement('td');
+                    td.className = "flex items-center justify-center font-montserrat font-bold text-xl md:text-2xl bg-slate-900/40 border border-slate-800 rounded-xl text-slate-600 transition-all duration-300 w-full h-full";
+                    
+                    const currentNum = (col * rowsCount) + i + 1;
+
+                    if (currentNum <= maxNum) {
+                        td.innerText = currentNum;
+                        td.id = `num-${currentNum}`;
+                    } else {
+                        td.innerText = ''; 
+                        td.className = "bg-transparent border-0 pointer-events-none w-full h-full";
+                    }
+                    tr.appendChild(td);
+                }
+                bingoTableBody.appendChild(tr);
+            }
+        }
+
+        function spinNumber() {
+            if (isSpinning) return;
+            
+            if (drawnNumbers.length >= maxNum) {
+                bottomStatusText.innerText = "🎉 ออกครบทุกหมายเลขแล้ว! 🎉";
+                bottomStatusText.className = "text-amber-300 font-extrabold animate-bounce text-xl drop-shadow-md";
+                return;
+            }
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+            maxNumberInput.disabled = true;
+            spinBtn.classList.add('opacity-40', 'cursor-not-allowed');
+
+            soundSpin.currentTime = 0;
+            soundSpin.play().catch(e => console.log("Sound autoplay blocked"));
+
+            let timeLeft = 3; 
+            bottomStatusText.className = "text-cyan-400 font-bold animate-pulse";
+            bottomStatusText.innerText = `กำลังสุ่มหมายเลข... (${timeLeft} วินาที)`;
+            topStatusText.innerText = "กำลังหมุนลูกบอล :";
+            topStatusText.className = "text-cyan-400 font-black text-2xl uppercase tracking-widest mb-6 animate-pulse drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]";
+
+            luckyNumberEl.classList.add('ball-spinning');
+            const intervalEffect = setInterval(() => {
+                let randomTemp = Math.floor(Math.random() * maxNum) + 1;
+                luckyNumberEl.innerText = randomTemp;
+            }, 60);
+
+            const countdownInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    bottomStatusText.innerText = `กำลังสุ่มหมายเลข... (${timeLeft} วินาที)`;
+                } else {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+
+            setTimeout(() => {
+                clearInterval(intervalEffect);
+                luckyNumberEl.classList.remove('ball-spinning');
+
+                soundSpin.pause();
+                soundWin.currentTime = 0;
+                soundWin.play();
+
+                let uniqueNumber;
+                do {
+                    uniqueNumber = Math.floor(Math.random() * maxNum) + 1;
+                } while (drawnNumbers.includes(uniqueNumber));
+
+                drawnNumbers.push(uniqueNumber);
+                luckyNumberEl.innerText = uniqueNumber;
+                
+                topStatusText.innerText = "หมายเลขล่าสุดคือ :";
+                topStatusText.className = "text-amber-300 font-black text-2xl uppercase tracking-widest mb-6 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]";
+                bottomStatusText.innerText = ""; 
+
+                // ช่องที่ถูกออกรางวัลจะเปล่งแสงนีออนสีทองส้ม
+                const tableCell = document.getElementById(`num-${uniqueNumber}`);
+                if (tableCell) {
+                    tableCell.className = "flex items-center justify-center font-montserrat font-black text-2xl md:text-3xl bg-gradient-to-b from-amber-300 to-orange-500 text-slate-950 border-2 border-yellow-200 rounded-xl shadow-[0_0_20px_rgba(251,191,36,0.8)] scale-105 transform transition-all duration-300 w-full h-full";
+                }
+
+                isSpinning = false;
+                spinBtn.disabled = false;
+                spinBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+            }, 3000);
+        }
+
+        function resetGame() {
+            soundSpin.pause();
+            soundWin.pause();
+
+            drawnNumbers = [];
+            isSpinning = false;
+            spinBtn.disabled = false;
+            maxNumberInput.disabled = false;
+            spinBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+            
+            luckyNumberEl.innerText = '--';
+            topStatusText.innerText = "หมายเลขล่าสุดคือ :";
+            topStatusText.className = "text-amber-300 font-black text-2xl uppercase tracking-widest mb-6 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]";
+            bottomStatusText.innerText = "บอร์ดรีเซ็ตเรียบร้อย เริ่มเกมใหม่ได้เลย!";
+            bottomStatusText.className = "text-cyan-400 font-bold";
+
+            generateTable();
+        }
+
+        generateTable();
+    </script>
+</body>
+</html>
